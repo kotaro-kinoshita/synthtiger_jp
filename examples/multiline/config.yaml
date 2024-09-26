@@ -1,8 +1,19 @@
 count: 100
 
 corpus:
-  paths: [resources/corpus/mjsynth.txt]
-  weights: [1]
+  paths: [
+    resources/corpus/sentence0.txt,
+    resources/corpus/sentence1.txt,
+    resources/corpus/sentence2.txt,
+    resources/corpus/sentence3.txt,
+    resources/corpus/sentence4.txt,
+    resources/corpus/sentence5.txt,
+    resources/corpus/sentence6.txt,
+    resources/corpus/sentence7.txt,
+    resources/corpus/sentence8.txt,
+    resources/corpus/sentence9.txt,
+  ]
+  weights: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1,]
   min_length: 1
   max_length: 25
   textcase: [lower, upper, capitalize]

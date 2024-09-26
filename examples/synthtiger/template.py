@@ -121,6 +121,8 @@ class SynthTiger(templates.Template):
             bg_image = _blend_images(mg_image, bg_image, self.visibility_check)
 
         image = _blend_images(fg_image, bg_image, self.visibility_check)
+        cv2.imwrite("image.png", image)
+        
         image, fg_image, glyph_fg_image = self._postprocess_images(
             [image, fg_image, glyph_fg_image]
         )
@@ -222,23 +224,50 @@ class SynthTiger(templates.Template):
         text = "".join(chars)
         font = self.font.sample({"text": text, "vertical": self.vertical})
 
+        # 文字を画像に変換
         char_layers = [layers.TextLayer(char, **font) for char in chars]
+        #cv2.imwrite("test.png", char_layers[0].image)
+
+        # 文字に対して、ElasticDistortionを適用
         self.shape.apply(char_layers)
+        #cv2.imwrite("dist.png", char_layers[0].image)
+
+        # 文字の配置を決定
         self.layout.apply(char_layers, {"meta": {"vertical": self.vertical}})
         char_glyph_layers = [char_layer.copy() for char_layer in char_layers]
 
+        # 文字を画像をマージ
         text_layer = layers.Group(char_layers).merge()
+        #cv2.imwrite("text.png", text_layer.image)
         text_glyph_layer = text_layer.copy()
 
         transform = self.transform.sample()
+         # 文字に対して、色を追加
         self.color.apply([text_layer, text_glyph_layer], color)
+        #cv2.imwrite("text_color.png", text_layer.image)
+
+        # 文字に対して、画像をアルファブレンディングし、質感を追加
         self.texture.apply([text_layer, text_glyph_layer])
+        #cv2.imwrite("text_texture.png", text_layer.image)
+
+        # 文字に対して、スタイルを適用
+        # 影、エクストルージョン、ボーダーなど
         self.style.apply([text_layer, *char_layers], style)
+        #cv2.imwrite("text_style.png", text_layer.image)
+        
+        # 文字に対して、Augmentationを適用
         self.transform.apply(
             [text_layer, text_glyph_layer, *char_layers, *char_glyph_layers], transform
         )
+        #cv2.imwrite("text_transform.png", text_layer.image)
+
+        #　一旦文字領域に合わせてクロップ
         self.fit.apply([text_layer, text_glyph_layer, *char_layers, *char_glyph_layers])
+        #cv2.imwrite("text_fit.png", text_layer.image)
+        
+        # 文字画像に対して、パディングを適用
         self.pad.apply([text_layer])
+        cv2.imwrite("text_pad.png", text_layer.image)
 
         for char_layer in char_layers:
             char_layer.topleft -= text_layer.topleft
