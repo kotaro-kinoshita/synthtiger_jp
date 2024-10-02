@@ -226,7 +226,7 @@ class SynthTiger(templates.Template):
 
         # 文字を画像に変換
         char_layers = [layers.TextLayer(char, **font) for char in chars]
-        #cv2.imwrite("test.png", char_layers[0].image)
+        cv2.imwrite("test.png", char_layers[0].image)
 
         # 文字に対して、ElasticDistortionを適用
         self.shape.apply(char_layers)

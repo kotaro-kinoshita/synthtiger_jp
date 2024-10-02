@@ -1,4 +1,7 @@
-count: 30
+count: 10
+paragraphs: 5
+
+doc_size: [1024, 1024]
 
 coord_output: true
 mask_output: true
@@ -15,63 +18,55 @@ midground_offset:
 foreground_mask_pad: 5
 
 corpus:
-  weights: [1, 1]
-  args:
-    - paths: [
-          resources/corpus/address.txt, 
-          resources/corpus/company.txt,
-          resources/corpus/sentence0.txt,
-          resources/corpus/sentence1.txt,
-          resources/corpus/sentence2.txt,
-          resources/corpus/sentence3.txt,
-          resources/corpus/sentence4.txt,
-          resources/corpus/sentence5.txt,
-          resources/corpus/sentence6.txt,
-          resources/corpus/sentence7.txt,
-          resources/corpus/sentence8.txt,
-          resources/corpus/sentence9.txt,
-        ]
-      weights: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-      min_length: 1
-      max_length: 25
-      textcase: [lower, upper, capitalize]
-      augmentation: 0.1
-      augmentation_length: [1, 25]
-    - paths: []
-      weights: []
-      min_length: 1
-      max_length: 25
-      textcase: [lower, upper, capitalize]
-      augmentation: 0
-      augmentation_charset: resources/charset/charset.txt
-
+  paths: [
+        resources/corpus/address.txt, 
+        resources/corpus/company.txt,
+        resources/corpus/sentence0.txt,
+        resources/corpus/sentence1.txt,
+        resources/corpus/sentence2.txt,
+        resources/corpus/sentence3.txt,
+        resources/corpus/sentence4.txt,
+        resources/corpus/sentence5.txt,
+        resources/corpus/sentence6.txt,
+        resources/corpus/sentence7.txt,
+        resources/corpus/sentence8.txt,
+        resources/corpus/sentence9.txt,
+      ]
+  weights: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  min_length: 1
+  max_length: 25
+  textcase: [lower, upper, capitalize]
+  #augmentation: 0.1
+  #augmentation_length: [1, 25]
 
 font:
   paths: [resources/font]
   weights: [1]
-  size: [40, 80]
+  size: [10, 80]
   bold: 0.5
 
-texture:
-  prob: 0.5
-  args:
-    paths: [resources/image]
-    weights: [1]
-    alpha: [0, 1]
-    grayscale: 0
-    crop: 1
-colormap2:
-  paths: [resources/colormap/colormap.txt]
-  weights: [1]
-  k: 2
-  alpha: [1, 1]
-  colorize: 1
-colormap3:
-  paths: [resources/colormap/colormap.txt]
-  weights: [1]
-  k: 3
-  alpha: [1, 1]
-  colorize: 1
+#texture:
+#  prob: 0.5
+#  args:
+#    paths: [resources/image]
+#    weights: [1]
+#    alpha: [0, 1]
+#    grayscale: 0
+#    crop: 1#
+
+#colormap2:
+#  paths: [resources/colormap/colormap.txt]
+#  weights: [1]
+#  k: 2
+#  alpha: [1, 1]
+#  colorize: 1#
+
+#colormap3:
+#  paths: [resources/colormap/colormap.txt]
+#  weights: [1]
+#  k: 3
+#  alpha: [1, 1]
+#  colorize: 1#
 
 color:
   gray: [0, 255]
@@ -91,17 +86,25 @@ shape:
         sigma: [0, 0.6]
 
 layout:
-  weights: [4, 1]
-  args:
-    # flow layout
-    - space: [-2, 5]
-      line_align: [middle]
-    # curve layout
-    - curve: [20, 40]
-      space: [-2, 5]
-      convex: 0.5
-      upward: 0.5
-      
+  length: [256, 512]
+  space: [0, 0]
+  line_space: [0, 16]
+  align: [left, center, right, justify]
+  line_align: [middle]
+  ltr: true
+  ttb: true
+  vertical: false
+
+doc_layout:
+  length: [1024, 1024]
+  space: [10, 100]
+  line_space: [10, 100]
+  align: [justify]
+  line_align: [middle]
+  ltr: true
+  ttb: true
+  vertical: false
+
 style:
   prob: 0.25
   args:
