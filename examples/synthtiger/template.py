@@ -9,6 +9,8 @@ import os
 import cv2
 import numpy as np
 from PIL import Image
+import lmdb
+import io
 
 from synthtiger import components, layers, templates, utils
 
@@ -105,6 +107,8 @@ class SynthTiger(templates.Template):
             **config.get("postprocess", {}),
         )
 
+        self.env = None
+
     def generate(self):
         quality = np.random.randint(self.quality[0], self.quality[1] + 1)
         midground = np.random.rand() < self.midground
@@ -121,8 +125,8 @@ class SynthTiger(templates.Template):
             bg_image = _blend_images(mg_image, bg_image, self.visibility_check)
 
         image = _blend_images(fg_image, bg_image, self.visibility_check)
-        cv2.imwrite("image.png", image)
-        
+        # cv2.imwrite("image.png", image)
+
         image, fg_image, glyph_fg_image = self._postprocess_images(
             [image, fg_image, glyph_fg_image]
         )
@@ -165,35 +169,60 @@ class SynthTiger(templates.Template):
         mask = Image.fromarray(mask.astype(np.uint8))
         glyph_mask = Image.fromarray(glyph_mask.astype(np.uint8))
 
-        coords = [[x, y, x + w, y + h] for x, y, w, h in bboxes]
-        coords = "\t".join([",".join(map(str, map(int, coord))) for coord in coords])
-        glyph_coords = [[x, y, x + w, y + h] for x, y, w, h in glyph_bboxes]
-        glyph_coords = "\t".join(
-            [",".join(map(str, map(int, coord))) for coord in glyph_coords]
-        )
+        shard = idx // 1000000
+        if self.env is None:
+            print(f"Creating batch: {shard:04d}")
+            outdir_batch = f"batch_{shard:04d}"
+            outdir_batch = os.path.join(root, outdir_batch)
+            os.makedirs(outdir_batch, exist_ok=True)
+            self.env = lmdb.open(outdir_batch, map_size=10**12)
 
-        shard = str(idx // 10000)
-        image_key = os.path.join("images", shard, f"{idx}.jpg")
-        mask_key = os.path.join("masks", shard, f"{idx}.png")
-        glyph_mask_key = os.path.join("glyph_masks", shard, f"{idx}.png")
-        image_path = os.path.join(root, image_key)
-        mask_path = os.path.join(root, mask_key)
-        glyph_mask_path = os.path.join(root, glyph_mask_key)
+        num_samples = idx % 1000000
+        with self.env.begin(write=True) as txn:
+            img_bytes = image.tobytes()
+            img_bytes = io.BytesIO()
+            image.save(img_bytes, format="JPEG")
 
-        os.makedirs(os.path.dirname(image_path), exist_ok=True)
-        image.save(image_path, quality=quality)
-        if self.mask_output:
-            os.makedirs(os.path.dirname(mask_path), exist_ok=True)
-            mask.save(mask_path)
-        if self.glyph_mask_output:
-            os.makedirs(os.path.dirname(glyph_mask_path), exist_ok=True)
-            glyph_mask.save(glyph_mask_path)
+            image_key = f"image-{num_samples:09d}".encode()
+            lable_key = f"label-{num_samples:09d}".encode()
 
-        self.gt_file.write(f"{image_key}\t{label}\n")
-        if self.coord_output:
-            self.coords_file.write(f"{image_key}\t{coords}\n")
-        if self.glyph_coord_output:
-            self.glyph_coords_file.write(f"{image_key}\t{glyph_coords}\n")
+            txn.put(image_key, img_bytes.getvalue())
+            txn.put(lable_key, label.encode())
+
+        if num_samples == 999999:
+            with self.env.begin(write=True) as txn:
+                txn.put("num-samples".encode(), str(num_samples).encode())
+            self.env.close()
+            self.env = None
+
+        # coords = [[x, y, x + w, y + h] for x, y, w, h in bboxes]
+        # coords = "\t".join([",".join(map(str, map(int, coord))) for coord in coords])
+        # glyph_coords = [[x, y, x + w, y + h] for x, y, w, h in glyph_bboxes]
+        # glyph_coords = "\t".join(
+        #    [",".join(map(str, map(int, coord))) for coord in glyph_coords]
+        # )
+
+        # image_key = os.path.join("images", str(shard), f"{idx}.jpg")
+        # mask_key = os.path.join("masks", shard, f"{idx}.png")
+        # glyph_mask_key = os.path.join("glyph_masks", shard, f"{idx}.png")
+        image_path = os.path.join(root, f"{idx}.jpg")
+        # mask_path = os.path.join(root, mask_key)
+        # glyph_mask_path = os.path.join(root, glyph_mask_key)
+
+        # os.makedirs(os.path.dirname(image_path), exist_ok=True)
+        # image.save(image_path, quality=quality)
+        # if self.mask_output:
+        #    os.makedirs(os.path.dirname(mask_path), exist_ok=True)
+        #    mask.save(mask_path)
+        # if self.glyph_mask_output:
+        #    os.makedirs(os.path.dirname(glyph_mask_path), exist_ok=True)
+        #    glyph_mask.save(glyph_mask_path)
+
+        # self.gt_file.write(f"{image_key}\t{label}\n")
+        # if self.coord_output:
+        #    self.coords_file.write(f"{image_key}\t{coords}\n")
+        # if self.glyph_coord_output:
+        #    self.glyph_coords_file.write(f"{image_key}\t{glyph_coords}\n")
 
     def end_save(self, root):
         self.gt_file.close()
@@ -204,6 +233,8 @@ class SynthTiger(templates.Template):
 
     def _generate_color(self):
         mg_color = self.color.sample()
+        fg_color = self.color.sample()
+        bg_color = self.color.sample()
         fg_style = self.style.sample()
         mg_style = self.style.sample()
 
@@ -226,11 +257,11 @@ class SynthTiger(templates.Template):
 
         # 文字を画像に変換
         char_layers = [layers.TextLayer(char, **font) for char in chars]
-        cv2.imwrite("test.png", char_layers[0].image)
+        # cv2.imwrite("test.png", char_layers[0].image)
 
         # 文字に対して、ElasticDistortionを適用
         self.shape.apply(char_layers)
-        #cv2.imwrite("dist.png", char_layers[0].image)
+        # cv2.imwrite("dist.png", char_layers[0].image)
 
         # 文字の配置を決定
         self.layout.apply(char_layers, {"meta": {"vertical": self.vertical}})
@@ -238,36 +269,36 @@ class SynthTiger(templates.Template):
 
         # 文字を画像をマージ
         text_layer = layers.Group(char_layers).merge()
-        #cv2.imwrite("text.png", text_layer.image)
+        # cv2.imwrite("text.png", text_layer.image)
         text_glyph_layer = text_layer.copy()
 
         transform = self.transform.sample()
-         # 文字に対して、色を追加
+        # 文字に対して、色を追加
         self.color.apply([text_layer, text_glyph_layer], color)
-        #cv2.imwrite("text_color.png", text_layer.image)
+        # cv2.imwrite("text_color.png", text_layer.image)
 
         # 文字に対して、画像をアルファブレンディングし、質感を追加
         self.texture.apply([text_layer, text_glyph_layer])
-        #cv2.imwrite("text_texture.png", text_layer.image)
+        # cv2.imwrite("text_texture.png", text_layer.image)
 
         # 文字に対して、スタイルを適用
         # 影、エクストルージョン、ボーダーなど
         self.style.apply([text_layer, *char_layers], style)
-        #cv2.imwrite("text_style.png", text_layer.image)
-        
+        # cv2.imwrite("text_style.png", text_layer.image)
+
         # 文字に対して、Augmentationを適用
         self.transform.apply(
             [text_layer, text_glyph_layer, *char_layers, *char_glyph_layers], transform
         )
-        #cv2.imwrite("text_transform.png", text_layer.image)
+        # cv2.imwrite("text_transform.png", text_layer.image)
 
-        #　一旦文字領域に合わせてクロップ
+        # 一旦文字領域に合わせてクロップ
         self.fit.apply([text_layer, text_glyph_layer, *char_layers, *char_glyph_layers])
-        #cv2.imwrite("text_fit.png", text_layer.image)
-        
+        # cv2.imwrite("text_fit.png", text_layer.image)
+
         # 文字画像に対して、パディングを適用
         self.pad.apply([text_layer])
-        cv2.imwrite("text_pad.png", text_layer.image)
+        # scv2.imwrite("text_pad.png", text_layer.image)
 
         for char_layer in char_layers:
             char_layer.topleft -= text_layer.topleft

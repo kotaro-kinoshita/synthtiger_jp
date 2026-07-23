@@ -18,33 +18,13 @@ corpus:
   weights: [1, 0]
   args:
     - paths: [
-          resources/corpus/address.txt, 
-          resources/corpus/company.txt,
-          resources/corpus/words.txt,
-          resources/corpus/chars.txt,
-          resources/corpus/sentence0.txt,
-          resources/corpus/sentence1.txt,
-          resources/corpus/sentence2.txt,
-          resources/corpus/sentence3.txt,
-          resources/corpus/sentence4.txt,
-          resources/corpus/sentence5.txt,
-          resources/corpus/sentence6.txt,
-          resources/corpus/sentence7.txt,
-          resources/corpus/sentence8.txt,
-          resources/corpus/sentence9.txt,
-          resources/corpus/sentence10.txt,
-          resources/corpus/sentence11.txt,
-          resources/corpus/sentence12.txt,
-          resources/corpus/sentence13.txt,
-          resources/corpus/sentence14.txt,
-          resources/corpus/sentence15.txt,
-          resources/corpus/sentence16.txt,
-          resources/corpus/sentence17.txt,
-          resources/corpus/sentence18.txt,
-          resources/corpus/sentence19.txt,
-          #resources/corpus/sentence20.txt,
+          resources/corpus/JMnedict_person.txt,
+          resources/corpus/JMnedict_surname.txt,
+          resources/corpus/JMnedict_fem.txt,
+          resources/corpus/JMnedict_masc.txt,
+          resources/corpus/Japanese_Surnames.txt,
         ]
-      weights: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+      weights: [1, 2, 1, 1, 2]
       #weights: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
       min_length: 1
       max_length: 100
